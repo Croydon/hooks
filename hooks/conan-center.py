@@ -5,6 +5,7 @@ import re
 from logging import WARNING, ERROR, INFO, DEBUG, NOTSET
 
 import yaml
+import json
 from conans import tools, Settings
 
 kb_errors = {"KB-H001": "DEPRECATED GLOBAL CPPSTD",
@@ -52,6 +53,7 @@ kb_errors = {"KB-H001": "DEPRECATED GLOBAL CPPSTD",
              "KB-H051": "DEFAULT OPTIONS AS DICTIONARY",
              "KB-H052": "CONFIG.YML HAS NEW VERSION",
              "KB-H053": "PRIVATE IMPORTS",
+             "KB-H054": "USE SPDX LICENSE IDENTIFIERS",
              }
 
 
@@ -582,6 +584,32 @@ def pre_export(output, conanfile, conanfile_path, reference, **kwargs):
         if os.path.exists(test_package_path):
             test_package_content = tools.load(test_package_path)
             _check_private_imports("test_package/conanfile.py", test_package_content)
+
+
+    @run_test("KB-H054", output)
+    def test(out):
+        accepted_licenses = []
+        data_dir = os.path.join(os.path.dirname(__file__), "data")
+        with open(os.path.join(data_dir, "spdx.json"), mode="r", encoding="utf-8") as spdx_file:
+            accepted_licenses.extend(json.load(spdx_file))
+        with open(os.path.join(data_dir, "licenses_additions.json"), mode="r", encoding="utf-8") as spdx_file:
+            accepted_licenses.extend(json.load(spdx_file))
+
+        licenses = getattr(conanfile, "license", None)
+        if not licenses:
+            out.error("Please add a 'license' attribute with all licenses of the packaged software. Use SPDX identifier when possible.")
+            return
+        if isinstance(licenses, str):
+            licenses = [licenses]
+        elif not isinstance(licenses, tuple):
+            out.error(
+                "Don't know how to process license attribute which is neither string nor tuple.")
+            return
+        for license_id in licenses:
+            if not license_id in accepted_licenses:
+                out.error(
+                    'License "%s" is neither a SPDX license identifier nor an accepted exception.' % license_id)
+
 
 @raise_if_error_output
 def post_export(output, conanfile, conanfile_path, reference, **kwargs):

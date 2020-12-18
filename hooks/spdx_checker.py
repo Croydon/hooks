@@ -1,13 +1,14 @@
-# -*- coding: utf-8 -*-
-
-import spdx_lookup
+import json
+import os
 
 
 def check_license(output, license_id):
-    if spdx_lookup.by_id(license_id):
-        output.info('license "%s" is a valid SPDX license identifier' % license_id)
-    else:
-        output.error('license "%s" is not a valid SPDX license identifier' % license_id)
+    with open(os.path.join("data", "spdx.json"), mode="r", encoding="utf-8") as spdx_file:
+        licenses = json.load(spdx_file)
+        if license_id in licenses:
+            output.info('license "%s" is a valid SPDX license identifier' % license_id)
+        else:
+            output.error('license "%s" is not a valid SPDX license identifier' % license_id)
 
 
 def pre_export(output, conanfile, conanfile_path, reference, **kwargs):
